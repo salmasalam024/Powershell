@@ -1,0 +1,200 @@
+#-------------------------------------------------------------------------------------
+#Author: Salma Salah
+#Date:   18.12.2023
+#Project:Creating VPC, Subnets, Internet Gateway
+#-------------------------------------------------------------------------------------
+#Importing modules
+#----------------------------------------------------------------------------------------
+Get-Module -ListAvailable
+Import-Module AWSPowerShell -Verbose
+#-------------------------------------------------------------------------------------
+#AWS Credentials 
+#-------------------------------------------------------------------------------------
+$UserSecretKey  = "enter your SecretKey"
+$UserAccessKey = "enter your AccessKey"
+$ProfileName  = "salma"
+$region = "us-east-1"
+#-------------------------------------------------------------------------------------
+#Setting Credentials
+#-------------------------------------------------------------------------------------
+$SetCredentials = Set-AWSCredential -AccessKey $UserAccessKey -SecretKey $UserSecretKey -StoreAs $ProfileName
+#-------------------------------------------------------------------------------------
+#Setting Sessions
+#-------------------------------------------------------------------------------------
+$session = Initialize-AWSDefaults -ProfileName $ProfileName  -Region $region
+
+
+#---------------------------------------------------------------------------------------
+#creating VPC
+#-------------------------------------------------------------------------------------
+write-host "Welcome to AWS Powershell!!!!!"
+write-host "Do you want to create a VPC ?"
+$VPCcreation = read-host 
+$VPCchoice = $VPCcreation
+if ($VPCchoice -eq "yes" -or ($VPCchoice -eq 'Yes') -or ($VPCchoice-eq 'y') -or ($VPCchoice -eq 'Y') )
+    {
+        $vpccidr = read-host "Enter a valid cidr block for your VPC ex: 10.0.0.0/16 !"
+        $vpcInformation= New-EC2Vpc -CidrBlock $vpccidr -InstanceTenancy default -Region $region 
+        $vpcID= $vpcInformation.VpcId
+        write-host "Your VPC has SUCCSEFULLY been create !!!!"
+    }
+
+#----------------------------------------------------------------------------------------
+#Adding tags
+#-----------------------------------------------------------------------------------------
+#Asking user if want to add tags to the VPC
+#---------------------------------------------------------------------------------------
+write-host "Do you want to add tag to your VPC "
+    $VPCtags = read-host 
+    $choice = $VPCtags
+    if ($choice -eq "yes" -or ($choice -eq 'Yes') -or ($choice-eq 'y') -or ($choice -eq 'Y') )
+    {
+        do 
+        {
+            write-host "please enter name of the tag to your VPC"
+            $VPCtagname = read-host 
+            $VPCtag = $VPCtagname
+            write-host "please enter value for the tag to your VPC"
+            $VPCtagvalue = read-host 
+            $VPCtagCONTENT= $VPCtagvalue
+            $tag = New-Object Amazon.EC2.Model.Tag
+            $tag.Key = $VPCtag
+            $tag.Value = $VPCtagCONTENT
+            New-EC2Tag -Resource $vpcID -Tag $tag
+            write-host "Do you want to add another tag to your VPC ?"
+            $VPCanothertag= read-host
+            
+        } 
+        while 
+        (
+          ( $VPCanothertag -eq "yes" -or ( $VPCanothertag -eq 'Yes') -or ( $VPCanothertag -eq 'y') -or ( $VPCanothertag -eq 'Y') )
+        )  
+    }
+write-host "The VPC has SUCCSEFULLY been created with Tags "
+
+
+#---------------------------------------------------------------------------------------
+#creating InternetGateway 
+#-------------------------------------------------------------------------------------
+$Internetgatewayinfo= New-EC2InternetGateway 
+$Internetgatewayinfo
+$IGWID= $Internetgatewayinfo.InternetGatewayId
+#---------------------------------------------------------------------------------------
+#Adding TAGS to the Internet Gateway
+#-------------------------------------------------------------------------------------
+write-host "Do you want to add tag to the Internet Gateway ? "
+$IGWtags = read-host 
+$IGWchoice = $IGWtags
+if ($IGWchoice -eq "yes" -or ($IGWchoice -eq 'Yes') -or ($IGWchoice -eq 'y') -or ($IGWchoice -eq 'Y') )
+{
+    do 
+    {
+        write-host "please enter name of the tage"
+        $IGWtagname = read-host 
+        $IGWtag = $IGWtagname
+        write-host "please enter value for the tage"
+        $IGWtagvalue = read-host 
+        $IGWcontent= $IGWtagvalue
+        $tag = New-Object Amazon.EC2.Model.Tag
+        $tag.Key = $IGWtag
+        $tag.Value = $IGWcontent
+        New-EC2Tag -Resource $IGWID -Tag $tag
+        write-host "Do you want to add another tag to the Internet Gateway ?"
+        $IGWanothertag= read-host
+        
+    } 
+    while 
+    (
+      ( $IGWanothertag -eq "yes" -or ( $IGWanothertag -eq 'Yes') -or ( $IGWanothertag -eq 'y') -or ( $IGWanothertag -eq 'Y') )
+    ) 
+}
+#---------------------------------------------------------------------------------------
+#Attaching Internet Gateway to the VPC
+#-------------------------------------------------------------------------------------
+ Add-EC2InternetGateway -InternetGatewayId $IGWID  -VpcId $vpcID
+ Get-EC2InternetGateway
+#---------------------------------------------------------------------------------------
+
+#---------------------------------------------------------------------------------------
+#creating SubNets
+#-------------------------------------------------------------------------------------
+write-host "Now let's Create subnets"   
+#------------------------------------------------------------------------------------
+#creating public subnets with TAGS
+#---------------------------------------------------------------------------------------
+#To ensure that user enters a number not a charecter
+#--------------------------------------------------------------------------------------
+[int]$NOofpulicsubnets= read-host "How many public subnets do you want to create ?" 
+#---------------------------------------------------------------------------------
+#To ensure that user enters a number not 0
+#---------------------------------------------------------------------------------- 
+if ($NOofpulicsubnets -lt 1)
+  { 
+    do 
+    {
+        [int]$NOofpulicsubnets= read-host "Please write a valied number "
+    }
+     while
+      (
+        $NOofpulicsubnets -lt 1
+      ) 
+  }
+#---------------------------------------------------------------------------------  
+#For loop to create subnets according to number enterd by user get CIDR from user
+#Ask if user want to add tags
+#Do-while loop to create another tag if user wants
+#----------------------------------------------------------------------------------- 
+for($counter=1; $counter -le $NOofpulicsubnets; $counter ++)
+{
+    $subnetcidr = read-host "Enter your subnet cidr !"
+    $subnetInformation= New-EC2Subnet -VpcId $vpcInformation.VpcId  -CidrBlock $subnetcidr 
+    #to enable auto-assign public IPv4
+    $publicipstate= $subnetInformation.MapPublicIpOnLaunch= "True"
+    $subnetid = $subnetInformation.SubnetId 
+    write-host "Do you want to add tag to the subnet " 
+    $subnettags = read-host 
+    $answer = $subnettags
+    if ($answer -eq "yes" -or ($answer -eq 'Yes') -or ($answer-eq 'y') -or ($answer -eq 'Y') )
+    {
+        do 
+        {
+            write-host "please enter name of the tage" 
+            $subnettagname = read-host 
+            $tagname = $subnettagname
+            write-host "please enter value for the tage" 
+            $subnettagvalue = read-host 
+            $tagheder= $subnettagvalue
+            $tag = New-Object Amazon.EC2.Model.Tag
+            $tag.Key = $tagname
+            $tag.Value = $tagheder
+            New-EC2Tag -Resource $subnetid -Tag $tag
+            write-host "Do you want to add another tag ?" 
+            $anothertag= read-host
+            
+        } 
+        while 
+        (
+          ( $anothertag -eq "yes" -or ( $anothertag -eq 'Yes') -or ( $anothertag -eq 'y') -or ( $anothertag -eq 'Y') )
+        )
+    }
+    #---------------------------------------------------------------------------------------
+    #creating Routetables
+    #Note when a new subnet is created a new route table should be created and assosiated to this subnet
+    #---------------------------------------------------------------------------------------------
+    $routetableinfo= New-EC2RouteTable -VpcId $vpcInformation.VpcId 
+    $routetableID= $routetableinfo.RouteTableId  
+   
+    #----------------------------------------------------------------------------------------------
+    #Assosiating Routetables each routetable to a specific subnet
+    #---------------------------------------------------------------------------------------------
+    Register-EC2RouteTable -RouteTableId $routetableID -SubnetId  $subnetid 
+    write-host "The Route table has succesfully been created and assosiated to the subnet" 
+    write-host "Now a route will be created that has IGW so your subnet will be internet accessable" 
+    
+
+    #--------------------------------------------------------------------------------------------
+    #creating a Route in each route table for each public subnet to be able to acess the Internet
+    #----------------------------------------------------------------------------------------------
+    $routeinformation= New-EC2Route -RouteTableId $routetableID  -DestinationCidrBlock 0.0.0.0/0 -GatewayId $IGWID
+    write-host "Congrats!!!! You have successfuly created subnet with route table assosiated and a route" 
+}
