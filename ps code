@@ -198,3 +198,28 @@ for($counter=1; $counter -le $NOofpulicsubnets; $counter ++)
     $routeinformation= New-EC2Route -RouteTableId $routetableID  -DestinationCidrBlock 0.0.0.0/0 -GatewayId $IGWID
     write-host "Congrats!!!! You have successfuly created subnet with route table assosiated and a route" 
 }
+#----------------------------------------------------------------------------------
+#Asking user if want to create a NatGateway
+#-----------------------------------------------------------------------------
+write-host "Do you want to create a Nat Gateway? "
+$NatGW= read-host
+$Natchoice= $NatGW
+if ($Natchoice -eq "yes" -or ($Natchoice-eq 'Yes') -or ($Natchoice-eq 'y') -or ($Natchoice-eq 'Y') )
+    {
+       
+    }
+    write-host "Take into consedtartion that creating NATGW will need an elastic IP to be allocated which have an extra cost!!! " 
+#-------------------------------------------------------------------------------------
+#Alloctaing an Elastic Ip to be used by the Nat Gateway
+#-------------------------------------------------------------------------------------
+$ElasticIpInfo= New-EC2Address -Domain Vpc
+$AllocationID= $ElasticIpInfo.AllocationId   
+#-------------------------------------------------------------------------------------
+#creating NATGateway
+#-------------------------------------------------------------------------------------
+$Natgatewayinfo= New-EC2NatGateway -SubnetId $subnetid -AllocationId $AllocationID
+$Natgatewayinfo
+Get-EC2NatGateway
+#--------------------------------------------------------------------------------------
+
+
